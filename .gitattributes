@@ -1,0 +1,47 @@
+# =======================================================
+# Git 属性設定ファイル: チーム開発におけるEOL (改行コード) 統一ルール
+# リポジトリ内のテキストファイルは、すべてLF (Line Feed) に正規化する。
+# =======================================================
+
+# --- 全体デフォルト設定 (全てのファイルに適用される汎用ルール) ---
+# Gitがテキストファイルを自動判定し、作業ディレクトリではLFに統一する。
+# リポジトリには常にLFで保存される。
+* text=auto eol=lf
+
+# --- 明示的なLF適用 (変換を確実にするため個別に指定) ---
+# 一般的なソースコードや設定ファイルについて、リポジトリ内でのLF統一を再度明示。
+*.py text eol=lf
+*.toml text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.ini text eol=lf
+*.env text eol=lf
+*.sh text eol=lf
+*.md text eol=lf
+*.txt text eol=lf
+*.gitignore text eol=lf
+*.editorconfig text eol=lf
+
+# --- Windows互換性 (作業ディレクトリでCRLFを使用) ---
+# Windows環境で正しく実行される必要があるバッチファイルは、
+# 作業ディレクトリでCRLFを維持する（リポジトリ内は常にLFで保存）。
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# --- バイナリファイルの保護 (改行コード変換の除外) ---
+# 画像などのバイナリファイルは、Gitが誤って改行コード変換を試み、ファイルを破損させるのを防ぐため、明示的に指定する。
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.whl binary
+*.exe binary
+*.dll binary
+*.so binary
+*.tar binary
+*.7z binary

@@ -1,0 +1,15 @@
+{
+  "recommendations": [
+    // -------------------------------------
+    // コード整形用（JS/TS/JSON/Markdown）
+    // -------------------------------------
+    "esbenp.prettier-vscode", // Prettier - Code formatter
+
+    // -------------------------------------
+    // Python 関連
+    // -------------------------------------
+    "ms-python.python", // Python 拡張機能（仮想環境認識、Lint、デバッグなど）
+    "ms-python.black-formatter", // Black Formatter（Python コード整形）
+    "ms-python.vscode-pylance" // Pylance（型チェック・補完・定義ジャンプが高速）
+  ]
+}
