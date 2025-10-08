@@ -4,6 +4,8 @@ import os
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # このファイルのある場所
 LOG_DIR = os.path.join(BASE_DIR, "log")
+
+# 日付ベースのログファイル名（ローテーション用）
 LOG_FILE = os.path.join(LOG_DIR, "app.log")
 
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -18,19 +20,15 @@ def get_logger(name: str) -> logging.Logger:
 
     logger.setLevel(logging.INFO)
 
-    # 日付ベースのローテーションハンドラーを使用
-    # 毎日0時にローテーションし、30日分のログを保持
+    # 日付単位のローテーションハンドラーを使用
     fh = logging.handlers.TimedRotatingFileHandler(
         LOG_FILE,
-        when="midnight",  # 毎日0時にローテーション
+        when="midnight",  # 毎日午前0時にローテーション
         interval=1,  # 1日間隔
-        backupCount=30,  # 30日分のバックアップを保持
+        backupCount=365,  # 365日分のログを保持
         encoding="utf-8",
     )
     fh.setLevel(logging.INFO)
-
-    # ローテーション後のファイル名に日付サフィックスを追加
-    fh.suffix = "%Y-%m-%d"
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -39,7 +37,7 @@ def get_logger(name: str) -> logging.Logger:
 
     logger.addHandler(fh)
 
-    # 親ロガーに伝播しないようにして重複を防ぐ
+    # ルートロガーへの伝播を無効化（親ロガーのハンドラーによる重複出力を防止）
     logger.propagate = False
 
     return logger
