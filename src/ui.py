@@ -2,8 +2,8 @@
 import streamlit as st
 import requests
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from config import API_BASE_URL
-from logger import get_logger
+from src.config import API_BASE_URL
+from src.logger import get_logger
 
 # ロガー設定
 logger = get_logger(__name__)

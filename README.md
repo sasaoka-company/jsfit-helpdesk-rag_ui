@@ -34,8 +34,12 @@ uv sync
 # 4. サーバ起動
 
 ```powershell
-streamlit run ui.py
+$env:PYTHONPATH = "." ; streamlit run src/ui.py
 ```
+
+※ src 配下のファイルを直接指定して実行すると、
+カレントディレクトリが src になり、from src.xxx の絶対インポートが失敗することがあるため、
+PYTHONPATH にプロジェクトルートを明示的に追加している。
 
 ## （参考）UI アプリケーションが起動すると、ブラウザが自動的に開き、以下の URL でアクセスできます：
 
