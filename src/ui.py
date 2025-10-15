@@ -1,4 +1,7 @@
 # app_ui.py
+import sys
+import os
+
 import streamlit as st
 import requests
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
@@ -7,6 +10,11 @@ from src.logger import get_logger
 
 # ロガー設定
 logger = get_logger(__name__)
+
+logger.info("=== SERVER STARTED ===")
+logger.info("sys.executable: %s", sys.executable)
+logger.info("sys.prefix: %s", sys.prefix)
+logger.info("PATH: %s", os.environ.get("PATH"))
 
 
 def show_message(message: BaseMessage) -> None:
@@ -25,11 +33,13 @@ def query_api(query: str) -> str:
     FastAPIエンドポイントにHTTPリクエストを送信して回答を取得
     """
     try:
+        logger.info(f"APIサーバへクエリ送信: {query}")
         response = requests.post(
             f"{API_BASE_URL}/query", json={"query": query}, timeout=120
         )
         response.raise_for_status()
         result = response.json()
+        logger.info(f"APIサーバからの戻り値: {result}")
         return result["answer"]
     except Exception as e:
         logger.error(f"エラーが発生しました: {e}")
