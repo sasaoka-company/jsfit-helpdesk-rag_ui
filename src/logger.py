@@ -13,6 +13,12 @@ LOG_FILE = os.path.join(LOG_DIR, "app.log")
 # ロックファイル
 LOCK_FILE = LOG_FILE + ".lock"
 
+# 環境変数キー名: ログレベル
+ENV_LOG_LEVEL = "LOG_LEVEL"
+
+# デフォルトログレベル
+DEFAULT_LOG_LEVEL = logging.INFO
+
 os.makedirs(LOG_DIR, exist_ok=True)
 
 
@@ -43,13 +49,35 @@ class SafeTimedRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
 
 
 def get_logger(name: str) -> logging.Logger:
+    """
+    ロガーを取得する.
+
+    環境変数 `LOG_LEVEL` でログレベルを制御できます（デフォルト: INFO）。
+
+    Note:
+        環境変数が未設定または不正な値の場合は INFO レベルになります。
+
+        環境変数 `LOG_LEVEL` の値:
+          - DEBUG
+          - INFO（デフォルト）
+          - WARNING
+          - ERROR
+    """
     logger = logging.getLogger(name)
+
+    # 環境変数からログレベルを取得（未設定の場合は空文字列に変換）
+    # 不正な値や空文字列の場合は getattr() で logging.INFO に変換
+    log_level_str = (os.getenv(ENV_LOG_LEVEL) or "").upper()
+    log_level = getattr(logging, log_level_str, DEFAULT_LOG_LEVEL)
 
     # 既にハンドラが設定されている場合は再設定せず、そのまま返す
     if logger.handlers:
+        logger.setLevel(log_level)  # ロガーのレベルを更新
+        for handler in logger.handlers:
+            handler.setLevel(log_level)  # ハンドラーのレベルも更新
         return logger
 
-    logger.setLevel(logging.INFO)
+    logger.setLevel(log_level)
 
     # 日付単位のローテーションハンドラーを使用
     fh = SafeTimedRotatingFileHandler(
@@ -60,7 +88,7 @@ def get_logger(name: str) -> logging.Logger:
         encoding="utf-8",
         delay=True,  # ファイルをすぐ開かず、最初のログ出力時に開く
     )
-    fh.setLevel(logging.INFO)
+    fh.setLevel(log_level)
 
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
