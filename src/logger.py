@@ -91,7 +91,11 @@ def get_logger(name: str) -> logging.Logger:
     fh.setLevel(log_level)
 
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "%(asctime)s"  # タイムスタンプ (例: 2025-11-13 10:00:00,123)
+        " - [%(processName)s:%(threadName)s]"  # プロセス名:スレッド名 (例: MainProcess:MainThread)
+        " - %(name)s"  # モジュール名 (例: src.agent.workflow.plan_agent)
+        " - %(levelname)s"  # ログレベル (例: DEBUG, INFO, WARNING, ERROR)
+        " - %(message)s"  # メッセージ
     )
     fh.setFormatter(formatter)
 
