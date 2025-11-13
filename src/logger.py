@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import logging.handlers
 import os
@@ -25,7 +26,8 @@ os.makedirs(LOG_DIR, exist_ok=True)
 # マルチプロセス対応ローテーションハンドラ
 class SafeTimedRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
     """
-    複数プロセスで安全にローテーション可能なハンドラ。
+    複数プロセスで安全にローテーション可能なハンドラ.
+
     ファイルロックを使用して、ローテーション時の競合を防止する。
 
     動作イメージ：
@@ -43,16 +45,63 @@ class SafeTimedRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
     """
 
     def doRollover(self):
+        """ファイルロックを使用して安全にローテーションを実行する."""
         # ファイルロックで競合を防止（他プロセスは待ち状態になる）
         with FileLock(LOCK_FILE):
             super().doRollover()
 
 
-def get_logger(name: str) -> logging.Logger:
+class TaskIdFilter(logging.Filter):
+    """
+    ログレコードにタスクIDを追加するフィルター.
+
+    asyncioタスクのIDを自動的にログレコードに追加します。
+    asyncioタスク外で実行された場合は "NoTask" を設定します。
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """
+        ログレコードにタスクID属性を追加する.
+
+        Args:
+            record: ログレコード
+
+        Returns:
+            常にTrue（ログを通過させる）
+        """
+        try:
+            task = asyncio.current_task()
+            if task:
+                # タスクIDを16進数の短縮版（末尾8桁）で取得
+                record.task_id = f"{id(task):x}"[-8:]
+            else:
+                record.task_id = "NoTask"
+        except RuntimeError:
+            # asyncioイベントループが実行されていない場合
+            record.task_id = "NoTask"
+
+        return True
+
+
+def get_logger(
+    name: str,
+    out_process_name: bool = True,
+    out_thread_name: bool = False,
+    out_task_id: bool = True,
+) -> logging.Logger:
     """
     ロガーを取得する.
 
     環境変数 `LOG_LEVEL` でログレベルを制御できます（デフォルト: INFO）。
+
+    Args:
+        name: ロガー名（通常は __name__ を指定）
+        out_process_name: プロセス名を出力するか（デフォルト: True）
+        out_thread_name: スレッド名を出力するか（デフォルト: False）
+        out_task_id: タスクIDを出力するか（デフォルト: True）
+
+    Returns:
+        設定済みのロガーインスタンス
 
     Note:
         環境変数が未設定または不正な値の場合は INFO レベルになります。
@@ -62,6 +111,27 @@ def get_logger(name: str) -> logging.Logger:
           - INFO（デフォルト）
           - WARNING
           - ERROR
+
+    Example:
+        >>> # 基本的な使用（プロセス名 + タスクID）
+        >>> logger = get_logger(__name__)
+        >>> logger.info("メッセージ")
+        # 出力: 2025-11-13 10:00:00,000 [MainProcess][TaskID: 1a2b3c4d][module][INFO] - メッセージ
+
+        >>> # タスクIDなし
+        >>> logger = get_logger(__name__, out_task_id=False)
+        >>> logger.info("メッセージ")
+        # 出力: 2025-11-13 10:00:00,000 [MainProcess][module][INFO] - メッセージ
+
+        >>> # プロセス名 + スレッド名 + タスクID
+        >>> logger = get_logger(__name__, out_task_id=True, out_process_name=True, out_thread_name=True)
+        >>> logger.info("メッセージ")
+        # 出力: 2025-11-13 10:00:00,000 [MainProcess:MainThread][TaskID: 1a2b3c4d][module][INFO] - メッセージ
+
+        >>> # タスクIDのみ（最小構成）
+        >>> logger = get_logger(__name__, out_task_id=True, out_process_name=False, out_thread_name=False)
+        >>> logger.info("メッセージ")
+        # 出力: 2025-11-13 10:00:00,000 [TaskID: 1a2b3c4d][module][INFO] - メッセージ
     """
     logger = logging.getLogger(name)
 
@@ -90,13 +160,36 @@ def get_logger(name: str) -> logging.Logger:
     )
     fh.setLevel(log_level)
 
-    formatter = logging.Formatter(
-        "%(asctime)s"  # タイムスタンプ (例: 2025-11-13 10:00:00,123)
-        " - [%(processName)s:%(threadName)s]"  # プロセス名:スレッド名 (例: MainProcess:MainThread)
-        " - %(name)s"  # モジュール名 (例: src.agent.workflow.plan_agent)
-        " - %(levelname)s"  # ログレベル (例: DEBUG, INFO, WARNING, ERROR)
-        " - %(message)s"  # メッセージ
+    # タスクIDフィルターを追加
+    if out_task_id:
+        fh.addFilter(TaskIdFilter())
+
+    # フォーマットを動的に構築
+    format_parts = [
+        "%(asctime)s",
+    ]
+
+    # プロセス名・スレッド名の出力を制御
+    if out_process_name and out_thread_name:
+        format_parts.append(" [%(processName)s:%(threadName)s]")
+    elif out_process_name:
+        format_parts.append(" [%(processName)s]")
+    elif out_thread_name:
+        format_parts.append(" [%(threadName)s]")
+
+    # タスクIDの出力を制御
+    if out_task_id:
+        format_parts.append("[%(task_id)s]")
+
+    format_parts.extend(
+        [
+            "[%(name)s]",
+            "[%(levelname)s]",
+            " %(message)s",
+        ]
     )
+
+    formatter = logging.Formatter("".join(format_parts))
     fh.setFormatter(formatter)
 
     logger.addHandler(fh)
